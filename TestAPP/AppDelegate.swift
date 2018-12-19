@@ -8,6 +8,7 @@
 
 import UIKit
 import CoreData
+import MagicalRecord
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -16,7 +17,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        
+        MagicalRecord.setupAutoMigratingCoreDataStack()
+        
         // Override point for customization after application launch.
+        application.setMinimumBackgroundFetchInterval(UIApplication.backgroundFetchIntervalMinimum)
         return true
     }
 
@@ -35,7 +40,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func applicationDidBecomeActive(_ application: UIApplication) {
-        // Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.
+        MagicalRecord.save({ (c : NSManagedObjectContext) in
+            let event : BGEvent = BGEvent.mr_createEntity(in: c)!
+            event.date = NSDate() as Date
+            event.type = "BecomeActive"
+        }) { (success : Bool, error : Error?) in
+            print(error as Any)
+        }
     }
 
     func applicationWillTerminate(_ application: UIApplication) {
@@ -44,6 +55,17 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         self.saveContext()
     }
 
+    func application(_ application: UIApplication, performFetchWithCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
+        
+        MagicalRecord.save({ (c : NSManagedObjectContext) in
+            let event : BGEvent = BGEvent.mr_createEntity(in: c)!
+            event.date = NSDate() as Date
+            event.type = "BG_Fetch"
+        }) { (success : Bool, error : Error?) in
+            completionHandler(UIBackgroundFetchResult.newData)
+        }
+    }
+    
     // MARK: - Core Data stack
 
     lazy var persistentContainer: NSPersistentContainer = {
